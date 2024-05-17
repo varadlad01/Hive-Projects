@@ -1,0 +1,49 @@
+Examine the date - 
+
+1. select count(summons_number) total_tickets from parking_violations_issued_for_2017_orc;
+
+2. select count(distinct registration_state) unique_states_count from parking_violations_issued_for_2017_orc;
+
+3. select count(summons_number) Empty_address_count from parking_violations_issued_for_2017_orc 
+   where street_code_1 is null or street_code_2 is null or street_code_3 is null;
+
+
+Aggregation Tasks - 
+
+1. select violation_code,count(violation_code) count_violation_code from parking_violations_issued_for_2017_orc
+   group by violation_code order by count_violation_code desc limit 5;
+
+2. select count(summons_number) count_vehicle_body_type,vehicle_body_type from parking_violations_issued_for_2017_orc
+   group by vehicle_body_type order by count_vehicle_body_type desc limit 5;
+	
+   select count(summons_number) count_vehicle_make,vehicle_make from parking_violations_issued_for_2017_orc
+   group by vehicle_make order by count_vehicle_make desc limit 5;
+
+3. select violation_precinct,count(violation_precinct) count_violation_precinct from parking_violations_issued_for_2017_orc
+   group by violation_precinct order by count_violation_precinct desc limit 5;
+
+   select issuer_precinct,count(issuer_precinct) count_issuer_precinct from parking_violations_issued_for_2017_orc
+   group by issuer_precinct order by count_issuer_precinct desc limit 5;
+
+4. select violation_code,count(violation_code) violation_code_frequency from parking_violations_issued_for_2017_orc 
+   where issuer_precinct in (select issuer_precinct from (select issuer_precinct, count(summons_number) cnt parking_violations_issued_for_2017_orc order by cnt desc limit 3) as a)
+   group by violation_code order by violation_code_frequency;
+
+5. select a.summons_number, a.violation_code, case when a.TM between DATE_FORMAT(convert("12:00:00",time),"%r") and DATE_FORMAT(convert("16:00:00",time),"%r") then 'Afternoon'
+   when a.TM between DATE_FORMAT(convert("16:00:01",time),"%r") and DATE_FORMAT(convert("22:00:00",time),"%r") then 'Evening'
+   when a.TM between DATE_FORMAT(convert("22:00:01",time),"%r") and DATE_FORMAT(convert("06:00:00",time),"%r") then 'Night'
+   else 'Morning' END from (select summons_number, violation_code, DATE_FORMAT(CONVERT(CONCAT(SUBSTRING("1543A",1,2),':',SUBSTRING("1543A",3,2),':','00'), TIME),"%r") AS TM
+   from parking_violations_issued_for_2017_orc)a;
+
+6. select violation_code, case 
+when DATE_FORMAT(CONVERT(CONCAT(SUBSTRING(violation_time,1,2),':',SUBSTRING(violation_time,3,2),':','00'), TIME),"%r") 
+	between DATE_FORMAT(convert("12:00:00",time),"%r") and DATE_FORMAT(convert("16:00:00",time),"%r") then 'Afternoon'
+when DATE_FORMAT(CONVERT(CONCAT(SUBSTRING(violation_time,1,2),':',SUBSTRING(violation_time,3,2),':','00'), TIME),"%r") 
+	between DATE_FORMAT(convert("16:00:01",time),"%r") and DATE_FORMAT(convert("20:00:00",time),"%r") then 'Evening'
+when DATE_FORMAT(CONVERT(CONCAT(SUBSTRING(violation_time,1,2),':',SUBSTRING(violation_time,3,2),':','00'), TIME),"%r") 
+	between DATE_FORMAT(convert("20:00:01",time),"%r") and DATE_FORMAT(convert("24:00:00",time),"%r") then 'Night'
+when DATE_FORMAT(CONVERT(CONCAT(SUBSTRING(violation_time,1,2),':',SUBSTRING(violation_time,3,2),':','00'), TIME),"%r") 
+	between DATE_FORMAT(convert("24:00:01",time),"%r") and DATE_FORMAT(convert("04:00:00",time),"%r") then 'late Night'
+when DATE_FORMAT(CONVERT(CONCAT(SUBSTRING(violation_time,1,2),':',SUBSTRING(violation_time,3,2),':','00'), TIME),"%r") 
+	between DATE_FORMAT(convert("04:00:01",time),"%r") and DATE_FORMAT(convert("08:00:00",time),"%r") then 'Early Morning'
+else 'Morning' END as time_interval from parking_violations_issued_for_2017_orc;

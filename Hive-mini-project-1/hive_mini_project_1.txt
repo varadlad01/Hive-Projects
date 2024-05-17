@@ -1,0 +1,138 @@
+This is a real time dataset of the ineuron technical consultant team. You have to perform hive analysis on this given dataset.
+
+Download Dataset 1 - https://drive.google.com/file/d/1WrG-9qv6atP-W3P_-gYln1hHyFKRKMHP/view
+
+Download Dataset 2 - https://drive.google.com/file/d/1-JIPCZ34dyN6k9CqJa-Y8yxIGq6vTVXU/view
+
+Note: both files are csv files. 
+
+
+1. Create a schema based on the given dataset
+
+create table agent_loging_report(
+sl_no int,
+agent string,
+date string,
+login_time string,
+logout_time string,
+duration string)
+row format delimited
+fields terminated by ','
+tblproperties("skip.header.line.count" = "1");
+
+create table agent_performance(
+sl_no int,
+date string,
+agent string,
+total_chats int,
+average_reponse_time string,
+average_resolution_time string,
+average_rating float,
+total_feedback int)
+row format delimited
+fields terminated by ','
+tblproperties("skip.header.line.count"="1");
+
+2. Dump the data inside the hdfs in the given schema location.
+
+load data local inpath 'file:///home/cloudera/data/AgentLogingReport.csv' into table agent_loging_report;
+
+
+load data local inpath 'file:///home/cloudera/data/AgentPerformance.csv' into table agent_performance;
+
+
+3. List of all agents names.
+select agent from agent_loging_report limit 5;
+ 
+4. Find out agent average rating.
+select agent, average_rating from agent_performance limit 5;
+
+5. Total working days for each agents 
+select count (distinct date) as total_working_days, agent from agent_loging_report group by agent limit 5;
+
+6. Total query that each agent have taken
+select agent,sum(total_chats) total_queries from agent_performance group by agent limit 5;
+
+7. Total Feedback that each agent have received
+select count(total_feedback) as total_feedback, agent from agent_performance group by agent limit 5;
+
+8. Agent name who have average rating between 3.5 to 4 
+select agent,average_rating from agent_performance where average_rating between 3.5 and 4 limit 5;
+
+9. Agent name who have rating less than 3.5 
+select agent,average_rating from agent_performance where average_rating < 3.5 limit 5;
+
+10. Agent name who have rating more than 4.5 
+select agent,average_rating from agent_performance where average_rating > 4.5 limit 5;
+
+11. How many feedback agents have received more than 4.5 average
+select agent,feedback_count from (select agent, avg(total_feedback)avg_feedback,count(total_feedback)feedback_count from agent_performance group by agent)a where avg_feedback > 4.5 limit 5;
+
+12. average weekly response time for each agent 
+tried a lot but getting date formatting error.
+
+13. average weekly resolution time for each agents 
+tried a lot but getting date formatting error.
+
+14. Find the number of chat on which they have received a feedback 
+tried a lot but getting date formatting error.
+
+15. Total contribution hour for each and every agents weekly basis 
+tried a lot but getting date formatting error.
+
+16. Perform inner join, left join and right join based on the agent column and after joining the table export that data into your local system.
+
+set hive.enforce.sortmergebucketmapjoin = false;
+set hive.auto.convert.sortmerge.join=true;
+set hive.optimise.bucketmapjoin=true;
+set hive.optimise.bucketmapjoin.sortedmerge=true;
+
+inner join -
+hive -e 'select * from agent_loging_report_part_buck l inner join agent_performance_part_buck p on l.agent=p.agent limit 5' > file:///home/cloudera/data/innerjoin.csv
+
+left join -
+hive -e 'select * from agent_loging_report_part_buck l left join agent_performance_part_buck p on l.agent=p.agent limit 5' > file:///home/cloudera/data/leftjoin.csv
+
+right join -
+hive -e 'select * from agent_loging_report_part_buck l right join agent_performance_part_buck p on l.agent=p.agent limit 5' > file:///home/cloudera/data/rightjoin.csv
+
+17. Perform partitioning on top of the agent column and then on top of that perform bucketing for each partitioning.
+
+create table agent_loging_report_part_buck(
+sl_no int,
+date string,
+login_time string,
+logout_time string,
+duration string)
+partitioned by (agent string)
+clustered by (date)
+sorted by (date)
+into 6 buckets
+row format delimited
+fields terminated by ',';
+
+set hive.exec.dynamic.partition=true;
+set hive.exec.dynamic.partition.mode=nonstrict;
+
+insert overwrite table agent_loging_report_part_buck partition (agent) select sl_no, agent, date, login_time, logout_time,duration from agent_loging_report;
+
+create table agent_performance_part_buck(
+sl_no int,
+date string,
+total_chats int,
+average_reponse_time string,
+average_resolution_time string,
+average_rating float,
+total_feedback int)
+partitioned by (agent string)
+clustered by (date)
+sorted by (date)
+into 3 buckets
+row format delimited
+fields terminated by ',';
+
+set hive.exec.dynamic.partition=true;
+hive> set hive.exec.dynamic.partition.mode=nonstrict;
+
+insert overwrite table agent_performance_part_buck partition (agent) select * from agent_performance;
+
